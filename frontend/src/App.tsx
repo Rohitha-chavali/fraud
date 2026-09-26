@@ -1,5 +1,6 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppProvider, useApp } from './context/AppContext';
 import { Sidebar } from './components/common/Sidebar';
 import { Navbar } from './components/common/Navbar';
@@ -7,7 +8,9 @@ import { LumoraOrb } from './components/lumora/LumoraOrb';
 import { LumoraChat } from './components/lumora/LumoraChat';
 import { TransactionDetailModal } from './components/transactions/TransactionDetailModal';
 import { ToastContainer } from './components/common/ToastContainer';
+import { ProtectedRoute } from './components/common/ProtectedRoute';
 
+import { LoginPage } from './pages/LoginPage';
 import { LandingPage } from './pages/LandingPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ScannerPage } from './pages/ScannerPage';
@@ -20,6 +23,7 @@ import { SettingsPage } from './pages/SettingsPage';
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const isLanding = location.pathname === '/';
+  const isLogin = location.pathname === '/login';
 
   const { activeTransactionModal, setActiveTransactionModal } = useApp();
 
@@ -70,6 +74,10 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const meta = getPageMeta(location.pathname);
 
+  if (isLogin) {
+    return <div className="min-h-screen bg-[#070b14]">{children}</div>;
+  }
+
   if (isLanding) {
     return (
       <div className="min-h-screen bg-[#070b14]">
@@ -109,23 +117,87 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 export function App() {
   return (
-    <AppProvider>
-      <Router>
-        <AppLayout>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/transactions" element={<TransactionsPage />} />
-            <Route path="/scan" element={<ScannerPage />} />
-            <Route path="/alerts" element={<AlertsPage />} />
-            <Route path="/investigations" element={<InvestigationsPage />} />
-            <Route path="/intelligence" element={<IntelligencePage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="*" element={<DashboardPage />} />
-          </Routes>
-        </AppLayout>
-      </Router>
-    </AppProvider>
+    <AuthProvider>
+      <AppProvider>
+        <Router>
+          <AppLayout>
+            <Routes>
+              {/* Public Auth Route */}
+              <Route path="/login" element={<LoginPage />} />
+
+              {/* All Application Routes strictly protected behind authentication */}
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <LandingPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <DashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/transactions"
+                element={
+                  <ProtectedRoute>
+                    <TransactionsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/scan"
+                element={
+                  <ProtectedRoute>
+                    <ScannerPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/alerts"
+                element={
+                  <ProtectedRoute>
+                    <AlertsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/investigations"
+                element={
+                  <ProtectedRoute>
+                    <InvestigationsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/intelligence"
+                element={
+                  <ProtectedRoute>
+                    <IntelligencePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedRoute>
+                    <SettingsPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Fallback to Dashboard (which redirects to /login if unauthenticated) */}
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </AppLayout>
+        </Router>
+      </AppProvider>
+    </AuthProvider>
   );
 }
 

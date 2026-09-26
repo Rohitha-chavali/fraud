@@ -143,11 +143,11 @@ export const TransactionDetailModal: React.FC<ModalProps> = ({ transaction, onCl
               <span className="text-[11px] text-slate-400 block">Amount</span>
               <span className="text-base font-bold text-white font-mono mt-0.5 block">
                 {transaction.currency === 'INR' ? '₹' : '$'}
-                {transaction.amount.toLocaleString()}
+                {(Number(transaction.amount) || 0).toLocaleString()}
               </span>
               <span className="text-[10px] text-slate-400">
                 Baseline avg: {transaction.currency === 'INR' ? '₹' : '$'}
-                {transaction.averageTransactionAmount.toLocaleString()}
+                {(Number(transaction.averageTransactionAmount) || 2500).toLocaleString()}
               </span>
             </div>
 

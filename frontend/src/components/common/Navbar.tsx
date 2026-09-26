@@ -4,11 +4,11 @@ import {
   Bell,
   ScanLine,
   Sparkles,
-  Search,
-  ExternalLink,
-  ShieldAlert,
+  LogOut,
+  User,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 
 interface NavbarProps {
   title?: string;
@@ -17,6 +17,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ title, subtitle }) => {
   const { setIsLumoraOpen, isLumoraOpen, inspectedTxnId } = useApp();
+  const { user, signOut } = useAuth();
 
   return (
     <header className="h-16 px-8 border-b border-slate-800/80 bg-[#090e1a]/80 backdrop-blur-md sticky top-0 z-20 flex items-center justify-between">
@@ -80,6 +81,26 @@ export const Navbar: React.FC<NavbarProps> = ({ title, subtitle }) => {
             </span>
           )}
         </button>
+
+        {/* User profile & Sign Out */}
+        {user && (
+          <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
+            <div className="flex items-center gap-1.5 text-xs text-slate-300 max-w-[120px] truncate" title={user.email}>
+              <div className="w-6 h-6 rounded-full bg-indigo-600/40 border border-indigo-500/50 flex items-center justify-center text-[10px] font-bold text-indigo-300 shrink-0">
+                {user.email.charAt(0).toUpperCase()}
+              </div>
+              <span className="truncate hidden lg:inline">{user.name || user.email.split('@')[0]}</span>
+            </div>
+
+            <button
+              onClick={() => signOut()}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-300 hover:bg-slate-800 transition-colors"
+              title="Sign Out"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );

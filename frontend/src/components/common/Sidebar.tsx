@@ -9,15 +9,18 @@ import {
   Network,
   Sparkles,
   Settings as SettingsIcon,
-  CircleCheck,
   ChevronRight,
+  LogOut,
+  User,
 } from 'lucide-react';
 import { Logo } from './Logo';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
   const { setIsLumoraOpen, isLumoraOpen } = useApp();
+  const { user, signOut } = useAuth();
 
   const mainLinks = [
     { to: '/dashboard', label: 'Overview', icon: LayoutDashboard },
@@ -32,7 +35,7 @@ export const Sidebar: React.FC = () => {
     <aside className="w-64 h-screen fixed left-0 top-0 bg-[#0a0f1d]/95 backdrop-blur-xl border-r border-slate-800/80 flex flex-col z-30 select-none">
       {/* Brand Header */}
       <div className="p-5 border-b border-slate-800/60">
-        <NavLink to="/">
+        <NavLink to="/dashboard">
           <Logo size="md" />
         </NavLink>
       </div>
@@ -120,20 +123,46 @@ export const Sidebar: React.FC = () => {
         </NavLink>
       </div>
 
-      {/* System Status Footer */}
-      <div className="p-4 border-t border-slate-800/70 bg-[#080c17]/80">
-        <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <span className="relative flex h-2.5 w-2.5">
+      {/* Footer Area: User Session + System Status */}
+      <div className="p-3 border-t border-slate-800/70 bg-[#080c17]/80 space-y-2">
+        {user && (
+          <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
+            <div className="flex items-center gap-2 overflow-hidden">
+              <div className="w-7 h-7 rounded-lg bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-xs font-bold text-indigo-300 shrink-0">
+                {user.email.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-semibold text-slate-200 truncate">
+                  {user.name || user.email.split('@')[0]}
+                </span>
+                <span className="text-[10px] text-slate-400 truncate font-mono">
+                  {user.email}
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => signOut()}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors shrink-0"
+              title="Sign Out"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        <div className="p-2.5 rounded-xl bg-slate-900/70 border border-slate-800/60 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
             <div className="flex flex-col">
-              <span className="text-xs font-semibold text-slate-200 leading-tight">AI Engine Online</span>
-              <span className="text-[10px] text-slate-400 leading-tight">Latency 14ms · 97.4%</span>
+              <span className="text-[11px] font-semibold text-slate-200 leading-tight">AI Engine Online</span>
+              <span className="text-[9px] text-slate-400 leading-tight">Latency 14ms · 97.4%</span>
             </div>
           </div>
-          <div className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <div className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
             ACTIVE
           </div>
         </div>
