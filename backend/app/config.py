@@ -15,3 +15,5 @@ MONGODB_DB = os.getenv("MONGODB_DB", "fraud_shield_ai")
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").strip()

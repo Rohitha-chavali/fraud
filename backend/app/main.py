@@ -1,7 +1,20 @@
+import sys
+import os
+from pathlib import Path
+
+# Add project root and backend dir to sys.path so 'backend.app...' and 'app...' resolve in all environments
+_current_dir = Path(__file__).resolve().parent
+_backend_dir = _current_dir.parent
+_project_root = _backend_dir.parent
+
+for _p in [str(_project_root), str(_backend_dir)]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from backend.app.config import HOST, PORT, ENVIRONMENT, DEMO_MODE, GEMINI_API_KEY
+from backend.app.config import HOST, PORT, ENVIRONMENT, DEMO_MODE, GEMINI_API_KEY, CORS_ORIGINS
 from backend.app.database.db import db_manager
 from backend.app.services.seed_data import get_demo_dataset
 
@@ -35,13 +48,23 @@ app = FastAPI(
 )
 
 # Enable CORS for frontend development and production
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+_raw_origins = [o.strip() for o in CORS_ORIGINS.split(",") if o.strip()]
+if not _raw_origins or "*" in _raw_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_raw_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 # Register API routes
 app.include_router(dashboard_router)

@@ -7,7 +7,8 @@ import {
   RiskLevel
 } from '../types';
 
-const API_BASE = (import.meta.env?.VITE_API_BASE_URL || '/api').replace(/\/$/, '');
+const rawBase = (import.meta.env?.VITE_API_BASE_URL || '/api').replace(/\/$/, '');
+const API_BASE = rawBase.endsWith('/api') ? rawBase : (rawBase.startsWith('http') ? `${rawBase}/api` : rawBase);
 
 function getUrl(path: string): URL {
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
