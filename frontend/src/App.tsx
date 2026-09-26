@@ -19,11 +19,12 @@ import { AlertsPage } from './pages/AlertsPage';
 import { InvestigationsPage } from './pages/InvestigationsPage';
 import { IntelligencePage } from './pages/IntelligencePage';
 import { SettingsPage } from './pages/SettingsPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const isLanding = location.pathname === '/';
-  const isLogin = location.pathname === '/login';
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/reset-password';
 
   const { activeTransactionModal, setActiveTransactionModal } = useApp();
 
@@ -74,7 +75,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const meta = getPageMeta(location.pathname);
 
-  if (isLogin) {
+  if (isAuthPage) {
     return <div className="min-h-screen bg-[#070b14]">{children}</div>;
   }
 
@@ -122,8 +123,9 @@ export function App() {
         <Router>
           <AppLayout>
             <Routes>
-              {/* Public Auth Route */}
+              {/* Public Auth Routes */}
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
 
               {/* All Application Routes strictly protected behind authentication */}
               <Route

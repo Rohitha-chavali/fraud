@@ -4,21 +4,28 @@ import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 export interface AuthUser {
   id: string;
-  phone?: string;
-  email?: string;
-  name?: string;
+  email: string;
+  name: string;
+  role: string;
+  organization: string;
+  avatarUrl?: string;
+}
+
+interface SignUpParams {
+  email: string;
+  password: string;
+  fullName: string;
   role?: string;
   organization?: string;
-  avatarUrl?: string;
 }
 
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
-  needsProfileSetup: boolean;
-  sendPhoneOtp: (phone: string) => Promise<{ error?: string }>;
-  verifyPhoneOtp: (phone: string, token: string) => Promise<{ error?: string; needsProfile?: boolean }>;
-  updateProfile: (profile: { name: string; role?: string; organization?: string }) => Promise<{ error?: string }>;
+  signIn: (email: string, pass: string) => Promise<{ error?: string }>;
+  signUp: (params: SignUpParams) => Promise<{ error?: string; confirmationSent?: boolean }>;
+  resetPassword: (email: string) => Promise<{ error?: string }>;
+  updatePassword: (newPassword: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
 }
 
@@ -27,19 +34,18 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [needsProfileSetup, setNeedsProfileSetup] = useState(false);
 
   const mapSupabaseUser = (sbUser: SupabaseUser | null): AuthUser | null => {
     if (!sbUser) return null;
     const metadata = sbUser.user_metadata || {};
-    const name = metadata.full_name || metadata.name || '';
+    const email = sbUser.email || '';
+    const name = metadata.full_name || metadata.name || email.split('@')[0] || 'Analyst';
     return {
       id: sbUser.id,
-      phone: sbUser.phone || '',
-      email: sbUser.email || '',
+      email: email,
       name: name,
       role: metadata.role || 'Fraud Investigator',
-      organization: metadata.organization || 'SecOps Unit',
+      organization: metadata.organization || 'Fintech SecOps Unit',
       avatarUrl: metadata.avatar_url,
     };
   };
@@ -47,134 +53,97 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let mounted = true;
 
-    // Safety timeout: ensure loading state never hangs longer than 2.5s even if network stalls
-    const timeoutTimer = setTimeout(() => {
+    // Failsafe watchdog timer: ensure loading state never stalls longer than 2s
+    const watchdog = setTimeout(() => {
       if (mounted && loading) {
         setLoading(false);
       }
-    }, 2500);
+    }, 2000);
 
-    // Initial session lookup
+    // Initial Supabase Session Hydration
     supabase.auth
       .getSession()
       .then(({ data: { session }, error }) => {
         if (!mounted) return;
         if (error) {
-          console.warn('[Auth] Session check notice:', error.message);
+          console.warn('[Auth] Session retrieval notice:', error.message);
         }
         if (session?.user) {
-          const authUser = mapSupabaseUser(session.user);
-          setUser(authUser);
-          // Check if name / profile details are missing
-          const hasName = Boolean(authUser?.name && authUser.name.trim().length > 0);
-          setNeedsProfileSetup(!hasName);
+          setUser(mapSupabaseUser(session.user));
         } else {
           setUser(null);
-          setNeedsProfileSetup(false);
         }
       })
       .catch((err) => {
-        console.warn('[Auth] Session fetch warning:', err);
+        console.warn('[Auth] Session check exception:', err);
       })
       .finally(() => {
         if (mounted) setLoading(false);
       });
 
-    // Listen to real-time auth changes (sign in, sign out, token refresh)
+    // Real-time Supabase Auth Event Listener
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
       if (session?.user) {
-        const authUser = mapSupabaseUser(session.user);
-        setUser(authUser);
-        const hasName = Boolean(authUser?.name && authUser.name.trim().length > 0);
-        setNeedsProfileSetup(!hasName);
+        setUser(mapSupabaseUser(session.user));
       } else {
         setUser(null);
-        setNeedsProfileSetup(false);
       }
       setLoading(false);
     });
 
     return () => {
       mounted = false;
-      clearTimeout(timeoutTimer);
+      clearTimeout(watchdog);
       subscription.unsubscribe();
     };
   }, []);
 
   /**
-   * Step 1: Request OTP code via Supabase Phone Authentication
+   * Supabase Email + Password Login
    */
-  const sendPhoneOtp = async (phone: string): Promise<{ error?: string }> => {
+  const signIn = async (email: string, pass: string): Promise<{ error?: string }> => {
     try {
-      const cleanPhone = phone.trim();
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: cleanPhone,
+      const cleanEmail = email.trim();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password: pass,
+      });
+
+      if (error) {
+        return { error: error.message };
+      }
+
+      if (data?.user) {
+        setUser(mapSupabaseUser(data.user));
+      }
+      return {};
+    } catch (err: any) {
+      return { error: err.message || 'Authentication failed. Please verify credentials.' };
+    }
+  };
+
+  /**
+   * Supabase Account Registration with Profile Metadata
+   */
+  const signUp = async (params: SignUpParams): Promise<{ error?: string; confirmationSent?: boolean }> => {
+    try {
+      const cleanEmail = params.email.trim();
+      const cleanName = params.fullName.trim();
+      const role = params.role?.trim() || 'Fraud Investigator';
+      const org = params.organization?.trim() || 'Fintech SecOps Unit';
+
+      const { data, error } = await supabase.auth.signUp({
+        email: cleanEmail,
+        password: params.password,
         options: {
-          channel: 'sms',
-        },
-      });
-
-      if (error) {
-        return { error: error.message };
-      }
-      return {};
-    } catch (err: any) {
-      return { error: err.message || 'Failed to dispatch verification code.' };
-    }
-  };
-
-  /**
-   * Step 2: Verify SMS OTP code with Supabase
-   */
-  const verifyPhoneOtp = async (
-    phone: string,
-    token: string
-  ): Promise<{ error?: string; needsProfile?: boolean }> => {
-    try {
-      const cleanPhone = phone.trim();
-      const cleanToken = token.trim();
-
-      const { data, error } = await supabase.auth.verifyOtp({
-        phone: cleanPhone,
-        token: cleanToken,
-        type: 'sms',
-      });
-
-      if (error) {
-        return { error: error.message };
-      }
-
-      if (data?.user) {
-        const authUser = mapSupabaseUser(data.user);
-        setUser(authUser);
-        const hasName = Boolean(authUser?.name && authUser.name.trim().length > 0);
-        setNeedsProfileSetup(!hasName);
-        return { needsProfile: !hasName };
-      }
-
-      return {};
-    } catch (err: any) {
-      return { error: err.message || 'Verification failed. Please check code.' };
-    }
-  };
-
-  /**
-   * Step 3: Profile Setup (Name, Role, Organization) for verified user
-   */
-  const updateProfile = async (profile: {
-    name: string;
-    role?: string;
-    organization?: string;
-  }): Promise<{ error?: string }> => {
-    try {
-      const { data, error } = await supabase.auth.updateUser({
-        data: {
-          full_name: profile.name.trim(),
-          role: profile.role?.trim() || 'Fraud Investigator',
-          organization: profile.organization?.trim() || 'SecOps Unit',
+          data: {
+            full_name: cleanName,
+            role: role,
+            organization: org,
+          },
         },
       });
 
@@ -182,20 +151,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { error: error.message };
       }
 
-      if (data?.user) {
-        const authUser = mapSupabaseUser(data.user);
-        setUser(authUser);
-        setNeedsProfileSetup(false);
+      // If Supabase has "Confirm email" toggled on, session is null until confirmed via email link
+      const confirmationSent = !data?.session;
+
+      if (data?.user && data.session) {
+        setUser(mapSupabaseUser(data.user));
       }
 
-      return {};
+      return { confirmationSent };
     } catch (err: any) {
-      return { error: err.message || 'Failed to update profile.' };
+      return { error: err.message || 'Registration failed. Please check inputs.' };
     }
   };
 
   /**
-   * Terminate active Supabase session
+   * Supabase Password Reset Request
+   */
+  const resetPassword = async (email: string): Promise<{ error?: string }> => {
+    try {
+      const cleanEmail = email.trim();
+      const redirectUrl = `${window.location.origin}/reset-password`;
+
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: redirectUrl,
+      });
+
+      if (error) {
+        return { error: error.message };
+      }
+      return {};
+    } catch (err: any) {
+      return { error: err.message || 'Failed to dispatch password recovery link.' };
+    }
+  };
+
+  /**
+   * Update Password (used on /reset-password page after clicking email link)
+   */
+  const updatePassword = async (newPassword: string): Promise<{ error?: string }> => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) {
+        return { error: error.message };
+      }
+      return {};
+    } catch (err: any) {
+      return { error: err.message || 'Failed to update password.' };
+    }
+  };
+
+  /**
+   * Sign Out
    */
   const signOut = async () => {
     try {
@@ -204,7 +213,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.warn('[Auth] Sign out notice:', err);
     }
     setUser(null);
-    setNeedsProfileSetup(false);
   };
 
   return (
@@ -212,10 +220,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         user,
         loading,
-        needsProfileSetup,
-        sendPhoneOtp,
-        verifyPhoneOtp,
-        updateProfile,
+        signIn,
+        signUp,
+        resetPassword,
+        updatePassword,
         signOut,
       }}
     >
