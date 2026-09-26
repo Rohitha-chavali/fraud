@@ -1,25 +1,48 @@
 import json
+import httpx
 from typing import Dict, Any, List, Optional
 from backend.app.config import GEMINI_API_KEY, GEMINI_MODEL
 
 class LumoraAIService:
     def __init__(self):
         self.api_key = GEMINI_API_KEY
-        self.model_name = GEMINI_MODEL
-        self._gemini_client = None
+        self.model_name = GEMINI_MODEL or "gemini-1.5-flash"
         if self.api_key:
-            try:
-                import google.generativeai as genai
-                genai.configure(api_key=self.api_key)
-                self._gemini_client = genai.GenerativeModel(self.model_name)
-                print(f"[LumoraAI] Gemini model '{self.model_name}' configured successfully.")
-            except Exception as e:
-                print(f"[LumoraAI] Note: Gemini initialization failed ({e}), using internal Lumora reasoning engine.")
+            print(f"[LumoraAI] Gemini model '{self.model_name}' configured with API key.")
+
+    def _call_gemini_raw(self, prompt: str) -> Optional[str]:
+        """Direct lightweight REST call to Google Gemini API using httpx (zero heavy dependencies)"""
+        if not self.api_key:
+            return None
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_name}:generateContent?key={self.api_key}"
+        try:
+            with httpx.Client(timeout=15.0) as client:
+                res = client.post(
+                    url,
+                    headers={"Content-Type": "application/json"},
+                    json={
+                        "contents": [
+                            {"parts": [{"text": prompt}]}
+                        ]
+                    }
+                )
+                if res.status_code == 200:
+                    data = res.json()
+                    candidates = data.get("candidates", [])
+                    if candidates:
+                        parts = candidates[0].get("content", {}).get("parts", [])
+                        if parts:
+                            return parts[0].get("text", "").strip()
+                else:
+                    print(f"[LumoraAI] Gemini API returned status {res.status_code}: {res.text}")
+        except Exception as e:
+            print(f"[LumoraAI] Direct Gemini API call failed: {e}")
+        return None
 
     def explain_transaction(self, txn: Dict[str, Any]) -> Dict[str, Any]:
         """Generate structured AI explanation for a transaction"""
         # If Gemini is configured and active, attempt real API prompt
-        if self._gemini_client:
+        if self.api_key:
             try:
                 prompt = f"""
                 You are LUMORA, the intelligent fraud investigation companion in FRAUD SHIELD AI.
@@ -44,14 +67,14 @@ class LumoraAIService:
                 - "recommendedAction": string (actionable next step for fraud investigator)
                 - "confidenceLevel": number (between 0.8 and 0.99)
                 """
-                response = self._gemini_client.generate_content(prompt)
-                text = response.text.strip()
-                if "```json" in text:
-                    text = text.split("```json")[1].split("```")[0].strip()
-                elif "```" in text:
-                    text = text.split("```")[1].split("```")[0].strip()
-                parsed = json.loads(text)
-                return parsed
+                text = self._call_gemini_raw(prompt)
+                if text:
+                    if "```json" in text:
+                        text = text.split("```json")[1].split("```")[0].strip()
+                    elif "```" in text:
+                        text = text.split("```")[1].split("```")[0].strip()
+                    parsed = json.loads(text)
+                    return parsed
             except Exception as e:
                 print(f"[LumoraAI] Gemini generation fallback triggered: {e}")
 
@@ -120,7 +143,7 @@ class LumoraAIService:
         active_id = transaction.get("transactionId") if transaction else None
 
         # Try Live Gemini Call if available
-        if self._gemini_client:
+        if self.api_key:
             try:
                 system_context = f"""
                 You are LUMORA, the intelligent fraud investigation companion in the 'FRAUD SHIELD AI' platform.
@@ -135,22 +158,22 @@ class LumoraAIService:
                 """
                 
                 chat_prompt = f"{system_context}\n\nUser Question: {message}\n\nRespond as LUMORA with clear insights, actionable advice, and bullet points where helpful."
-                gemini_res = self._gemini_client.generate_content(chat_prompt)
+                gemini_text = self._call_gemini_raw(chat_prompt)
                 
-                # Derive suggested follow-ups
-                follow_ups = [
-                    "What signals contributed most?",
-                    "What is the recommended next step?",
-                    "Could this be a false positive?",
-                    "Summarize customer profile"
-                ]
-                
-                return {
-                    "response": gemini_res.text.strip(),
-                    "suggestedActions": follow_ups[:3],
-                    "citedSignals": [s.get("name") for s in transaction.get("riskSignals", [])] if transaction else [],
-                    "transactionContext": {"transactionId": active_id} if active_id else None
-                }
+                if gemini_text:
+                    follow_ups = [
+                        "What signals contributed most?",
+                        "What is the recommended next step?",
+                        "Could this be a false positive?",
+                        "Summarize customer profile"
+                    ]
+                    
+                    return {
+                        "response": gemini_text,
+                        "suggestedActions": follow_ups[:3],
+                        "citedSignals": [s.get("name") for s in transaction.get("riskSignals", [])] if transaction else [],
+                        "transactionContext": {"transactionId": active_id} if active_id else None
+                    }
             except Exception as e:
                 print(f"[LumoraAI] Gemini chat fallback: {e}")
 
