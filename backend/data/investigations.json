@@ -1,0 +1,206 @@
+[
+  {
+    "caseId": "CASE-7544",
+    "transactionId": "TXN-90827",
+    "assignedTo": "Lead Fraud Officer",
+    "status": "New",
+    "priority": "High",
+    "riskScore": 99,
+    "riskLevel": "CRITICAL",
+    "merchant": "TechWorld Electronics",
+    "amount": 85000.0,
+    "currency": "INR",
+    "notes": [
+      {
+        "id": "NOTE-1",
+        "author": "Fraud Shield AI Sentinel",
+        "note": "Case created from scanner analysis. Risk: 99/100.",
+        "timestamp": "2026-09-26 06:39"
+      }
+    ],
+    "createdAt": "2026-09-26T06:39:01.087128",
+    "updatedAt": "2026-09-26T06:39:01.087145"
+  },
+  {
+    "caseId": "CASE-4401",
+    "transactionId": "TXN-92831",
+    "assignedTo": "Senior Fraud Specialist",
+    "status": "Investigating",
+    "priority": "Critical",
+    "riskScore": 99,
+    "riskLevel": "CRITICAL",
+    "merchant": "Apple Store Regent Street",
+    "amount": 84500.0,
+    "currency": "INR",
+    "notes": [
+      {
+        "id": "NOTE-1",
+        "author": "Lumora AI Sentinel",
+        "note": "Flagged impossible geographic velocity (Mumbai to London in 33 mins). Initiated security challenge.",
+        "timestamp": "2026-09-26 05:46"
+      },
+      {
+        "id": "NOTE-2",
+        "author": "Analyst Rajiv S.",
+        "note": "Attempted cardholder phone verification. Mobile endpoint unreachable. Holding settlement.",
+        "timestamp": "2026-09-26 05:51"
+      }
+    ],
+    "createdAt": "2026-09-26T05:45:04.667645",
+    "updatedAt": "2026-09-26T05:52:04.667651"
+  },
+  {
+    "caseId": "CASE-2812",
+    "transactionId": "TXN-38426",
+    "assignedTo": "Senior Analyst",
+    "status": "Investigating",
+    "priority": "Critical",
+    "riskScore": 99,
+    "riskLevel": "CRITICAL",
+    "merchant": "Zomato Delivery",
+    "amount": 10357.54,
+    "currency": "INR",
+    "notes": [
+      {
+        "id": "NOTE-11",
+        "author": "Lumora AI Sentinel",
+        "note": "Automated anomaly dispatch for Sneha Roy (TXN-38426). Score: 99.",
+        "timestamp": "2026-09-26 05:54"
+      }
+    ],
+    "createdAt": "2026-09-26T05:52:04.667657",
+    "updatedAt": "2026-09-26T05:56:04.667657"
+  },
+  {
+    "caseId": "CASE-5509",
+    "transactionId": "TXN-48460",
+    "assignedTo": "Investigator Priya",
+    "status": "Resolved",
+    "priority": "Critical",
+    "riskScore": 99,
+    "riskLevel": "CRITICAL",
+    "merchant": "Flipkart Internet",
+    "amount": 58582.33,
+    "currency": "INR",
+    "notes": [
+      {
+        "id": "NOTE-87",
+        "author": "Lumora AI Sentinel",
+        "note": "Automated anomaly dispatch for Rhea Kapoor (TXN-48460). Score: 99.",
+        "timestamp": "2026-09-26 05:03"
+      }
+    ],
+    "createdAt": "2026-09-26T05:01:04.667657",
+    "updatedAt": "2026-09-26T05:11:04.667657"
+  },
+  {
+    "caseId": "CASE-8664",
+    "transactionId": "TXN-90183",
+    "assignedTo": "Lead Fraud Officer",
+    "status": "New",
+    "priority": "Critical",
+    "riskScore": 99,
+    "riskLevel": "CRITICAL",
+    "merchant": "Malabar Gold & Diamonds",
+    "amount": 22040.84,
+    "currency": "INR",
+    "notes": [
+      {
+        "id": "NOTE-18",
+        "author": "Lumora AI Sentinel",
+        "note": "Automated anomaly dispatch for Aarav Sharma (TXN-90183). Score: 99.",
+        "timestamp": "2026-09-26 02:08"
+      }
+    ],
+    "createdAt": "2026-09-26T02:06:04.667657",
+    "updatedAt": "2026-09-26T02:16:04.667657"
+  },
+  {
+    "caseId": "CASE-7765",
+    "transactionId": "TXN-40643",
+    "assignedTo": "Investigator Priya",
+    "status": "New",
+    "priority": "High",
+    "riskScore": 83,
+    "riskLevel": "CRITICAL",
+    "merchant": "CryptoVault Exchange",
+    "amount": 11334.54,
+    "currency": "INR",
+    "notes": [
+      {
+        "id": "NOTE-58",
+        "author": "Lumora AI Sentinel",
+        "note": "Automated anomaly dispatch for Kabir Das (TXN-40643). Score: 83.",
+        "timestamp": "2026-09-26 03:47"
+      }
+    ],
+    "createdAt": "2026-09-26T03:45:04.667657",
+    "updatedAt": "2026-09-26T03:55:04.667657"
+  },
+  {
+    "caseId": "CASE-6890",
+    "transactionId": "TXN-79500",
+    "assignedTo": "SecOps Team",
+    "status": "Action Required",
+    "priority": "Critical",
+    "riskScore": 99,
+    "riskLevel": "CRITICAL",
+    "merchant": "CryptoVault Exchange",
+    "amount": 67029.81,
+    "currency": "INR",
+    "notes": [
+      {
+        "id": "NOTE-74",
+        "author": "Lumora AI Sentinel",
+        "note": "Automated anomaly dispatch for Vikram Malhotra (TXN-79500). Score: 99.",
+        "timestamp": "2026-09-26 02:29"
+      }
+    ],
+    "createdAt": "2026-09-26T02:27:04.667657",
+    "updatedAt": "2026-09-26T02:37:04.667657"
+  },
+  {
+    "caseId": "CASE-7006",
+    "transactionId": "TXN-29720",
+    "assignedTo": "SecOps Team",
+    "status": "Investigating",
+    "priority": "Critical",
+    "riskScore": 99,
+    "riskLevel": "CRITICAL",
+    "merchant": "Malabar Gold & Diamonds",
+    "amount": 81741.19,
+    "currency": "INR",
+    "notes": [
+      {
+        "id": "NOTE-26",
+        "author": "Lumora AI Sentinel",
+        "note": "Automated anomaly dispatch for Rhea Kapoor (TXN-29720). Score: 99.",
+        "timestamp": "2026-09-25 22:23"
+      }
+    ],
+    "createdAt": "2026-09-25T22:21:04.667657",
+    "updatedAt": "2026-09-25T22:31:04.667657"
+  },
+  {
+    "caseId": "CASE-9836",
+    "transactionId": "TXN-49638",
+    "assignedTo": "Investigator Priya",
+    "status": "Action Required",
+    "priority": "Critical",
+    "riskScore": 99,
+    "riskLevel": "CRITICAL",
+    "merchant": "Shell Highway Fuel Station",
+    "amount": 19343.02,
+    "currency": "INR",
+    "notes": [
+      {
+        "id": "NOTE-75",
+        "author": "Lumora AI Sentinel",
+        "note": "Automated anomaly dispatch for Priya Patel (TXN-49638). Score: 99.",
+        "timestamp": "2026-09-25 20:32"
+      }
+    ],
+    "createdAt": "2026-09-25T20:30:04.667657",
+    "updatedAt": "2026-09-25T20:40:04.667657"
+  }
+]
