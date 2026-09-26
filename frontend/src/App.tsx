@@ -19,12 +19,12 @@ import { AlertsPage } from './pages/AlertsPage';
 import { InvestigationsPage } from './pages/InvestigationsPage';
 import { IntelligencePage } from './pages/IntelligencePage';
 import { SettingsPage } from './pages/SettingsPage';
-import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { VerifyEmailPage } from './pages/VerifyEmailPage';
 
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const isLanding = location.pathname === '/';
-  const isAuthPage = location.pathname === '/login' || location.pathname === '/reset-password';
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/verify-email';
 
   const { activeTransactionModal, setActiveTransactionModal } = useApp();
 
@@ -123,11 +123,11 @@ export function App() {
         <Router>
           <AppLayout>
             <Routes>
-              {/* Auth routes bypass directly to dashboard */}
-              <Route path="/login" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/reset-password" element={<Navigate to="/dashboard" replace />} />
+              {/* Public Auth Routes */}
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/verify-email" element={<VerifyEmailPage />} />
 
-              {/* All Application Routes strictly protected behind authentication */}
+              {/* Public Landing or Protected Routes */}
               <Route
                 path="/"
                 element={

@@ -39,66 +39,85 @@ export const LoginPage: React.FC = () => {
   // Action states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [confirmationSent, setConfirmationSent] = useState(false);
   const [resetSent, setResetSent] = useState(false);
 
-  // If already logged in, redirect directly to dashboard
+  // Auto-route if user is already authenticated
   useEffect(() => {
     if (!authLoading && user) {
-      navigate(from, { replace: true });
+      if (user.emailVerified) {
+        navigate(from, { replace: true });
+      } else {
+        navigate('/verify-email', { replace: true });
+      }
     }
   }, [user, authLoading, from, navigate]);
+
+  /**
+   * Validate standard email regex
+   */
+  const isValidEmail = (emailStr: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr.trim());
+  };
 
   /**
    * Handle Email + Password Sign In
    */
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      setError('Please provide both email address and password.');
+    setError(null);
+
+    if (!isValidEmail(email)) {
+      setError('Please provide a valid institutional email address.');
+      return;
+    }
+
+    if (!password) {
+      setError('Please enter your account password.');
       return;
     }
 
     setLoading(true);
-    setError(null);
 
     const res = await signIn(email, password);
     setLoading(false);
 
     if (res.error) {
       setError(res.error);
+    } else if (res.unverified) {
+      navigate('/verify-email', { replace: true });
     } else {
       navigate(from, { replace: true });
     }
   };
 
   /**
-   * Handle Create Account
+   * Handle User Registration
    */
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      setError('Please enter a valid email and password.');
+    setError(null);
+
+    if (!fullName.trim()) {
+      setError('Please provide your full legal or investigator name.');
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      setError('Please provide a valid email format (e.g. analyst@institution.com).');
       return;
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters.');
+      setError('Password must contain at least 6 characters to meet security standards.');
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match.');
-      return;
-    }
-
-    if (!fullName.trim()) {
-      setError('Please provide your full investigator name.');
+      setError('Password and Confirm Password do not match.');
       return;
     }
 
     setLoading(true);
-    setError(null);
 
     const res = await signUp({
       email,
@@ -111,10 +130,9 @@ export const LoginPage: React.FC = () => {
 
     if (res.error) {
       setError(res.error);
-    } else if (res.confirmationSent) {
-      setConfirmationSent(true);
-    } else {
-      navigate(from, { replace: true });
+    } else if (res.verificationSent) {
+      // Direct immediately to email verification requirement screen
+      navigate('/verify-email', { replace: true });
     }
   };
 
@@ -123,13 +141,14 @@ export const LoginPage: React.FC = () => {
    */
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) {
+    setError(null);
+
+    if (!isValidEmail(email)) {
       setError('Please enter the email address associated with your account.');
       return;
     }
 
     setLoading(true);
-    setError(null);
 
     const res = await resetPassword(email);
     setLoading(false);
@@ -200,7 +219,7 @@ export const LoginPage: React.FC = () => {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="analyst@fraudshield.ai"
+                    placeholder="analyst@institution.com"
                     required
                     autoFocus
                     className="w-full pl-10 pr-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white text-xs placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors"
@@ -254,7 +273,6 @@ export const LoginPage: React.FC = () => {
                   onClick={() => {
                     setMode('SIGN_UP');
                     setError(null);
-                    setConfirmationSent(false);
                   }}
                   className="text-indigo-400 hover:text-indigo-300 font-semibold underline ml-1"
                 >
@@ -266,169 +284,147 @@ export const LoginPage: React.FC = () => {
 
           {/* CREATE ACCOUNT FORM */}
           {mode === 'SIGN_UP' && (
-            confirmationSent ? (
-              <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-200 text-xs flex flex-col items-center text-center space-y-2.5">
-                <CheckCircle2 className="w-8 h-8 text-emerald-400" />
-                <span className="font-bold text-sm text-white">Confirmation Email Dispatched</span>
-                <p className="text-slate-300 text-xs leading-relaxed">
-                  We've sent a verification link to <span className="text-emerald-300 font-semibold">{email}</span>.
-                  Please check your inbox to confirm your account and log in.
-                </p>
+            <form onSubmit={handleSignUp} className="space-y-3.5">
+              <div>
+                <label className="text-slate-300 text-xs font-medium block mb-1">
+                  Full Name <span className="text-rose-400">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <User className="w-4 h-4 text-indigo-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="e.g. Rohitha Chavali"
+                    required
+                    autoFocus
+                    className="w-full pl-10 pr-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white text-xs placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-slate-300 text-xs font-medium block mb-1">
+                  Institutional Email <span className="text-rose-400">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <Mail className="w-4 h-4 text-indigo-400" />
+                  </div>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="analyst@institution.com"
+                    required
+                    className="w-full pl-10 pr-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white text-xs placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-300 text-xs font-medium block mb-1">
+                    Password <span className="text-rose-400">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                      <Lock className="w-4 h-4 text-indigo-400" />
+                    </div>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••••••"
+                      required
+                      className="w-full pl-10 pr-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white text-xs placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-slate-300 text-xs font-medium block mb-1">
+                    Confirm Password <span className="text-rose-400">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                      <Lock className="w-4 h-4 text-indigo-400" />
+                    </div>
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="••••••••••••"
+                      required
+                      className="w-full pl-10 pr-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white text-xs placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-300 text-xs font-medium block mb-1">
+                    Role / Title
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                      <Briefcase className="w-4 h-4 text-indigo-400" />
+                    </div>
+                    <input
+                      type="text"
+                      value={role}
+                      onChange={(e) => setRole(e.target.value)}
+                      placeholder="e.g. Lead Fraud Analyst"
+                      className="w-full pl-10 pr-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white text-xs placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-slate-300 text-xs font-medium block mb-1">
+                    Organization
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                      <Building className="w-4 h-4 text-indigo-400" />
+                    </div>
+                    <input
+                      type="text"
+                      value={organization}
+                      onChange={(e) => setOrganization(e.target.value)}
+                      placeholder="e.g. SecOps Unit"
+                      className="w-full pl-10 pr-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white text-xs placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-950/40 transition-all disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
+              >
+                <span>{loading ? 'Creating Account & Dispatching Verification...' : 'Create Account'}</span>
+                <Sparkles className="w-4 h-4 text-amber-300" />
+              </button>
+
+              <div className="text-center text-xs text-slate-400 pt-2 border-t border-slate-800/80">
+                <span>Already have an account?</span>{' '}
                 <button
                   type="button"
                   onClick={() => {
                     setMode('SIGN_IN');
-                    setConfirmationSent(false);
                     setError(null);
                   }}
-                  className="mt-3 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold"
+                  className="text-indigo-400 hover:text-indigo-300 font-semibold underline ml-1"
                 >
-                  Back to Sign In
+                  Sign In
                 </button>
               </div>
-            ) : (
-              <form onSubmit={handleSignUp} className="space-y-3.5">
-                <div>
-                  <label className="text-slate-300 text-xs font-medium block mb-1">
-                    Email Address <span className="text-rose-400">*</span>
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                      <Mail className="w-4 h-4 text-indigo-400" />
-                    </div>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="analyst@institution.com"
-                      required
-                      autoFocus
-                      className="w-full pl-10 pr-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white text-xs placeholder-slate-400 focus:outline-none focus:border-indigo-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-slate-300 text-xs font-medium block mb-1">
-                      Password <span className="text-rose-400">*</span>
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                        <Lock className="w-4 h-4 text-indigo-400" />
-                      </div>
-                      <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="••••••••••••"
-                        required
-                        className="w-full pl-10 pr-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white text-xs placeholder-slate-400 focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-slate-300 text-xs font-medium block mb-1">
-                      Confirm Password <span className="text-rose-400">*</span>
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                        <Lock className="w-4 h-4 text-indigo-400" />
-                      </div>
-                      <input
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="••••••••••••"
-                        required
-                        className="w-full pl-10 pr-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white text-xs placeholder-slate-400 focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-slate-300 text-xs font-medium block mb-1">
-                    Full Name <span className="text-rose-400">*</span>
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                      <User className="w-4 h-4 text-indigo-400" />
-                    </div>
-                    <input
-                      type="text"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      placeholder="e.g. Rohitha Chavali"
-                      required
-                      className="w-full pl-10 pr-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white text-xs placeholder-slate-400 focus:outline-none focus:border-indigo-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-slate-300 text-xs font-medium block mb-1">
-                      Role / Designation
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                        <Briefcase className="w-4 h-4 text-indigo-400" />
-                      </div>
-                      <input
-                        type="text"
-                        value={role}
-                        onChange={(e) => setRole(e.target.value)}
-                        placeholder="e.g. Lead Fraud Analyst"
-                        className="w-full pl-10 pr-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white text-xs placeholder-slate-400 focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-slate-300 text-xs font-medium block mb-1">
-                      Organization
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                        <Building className="w-4 h-4 text-indigo-400" />
-                      </div>
-                      <input
-                        type="text"
-                        value={organization}
-                        onChange={(e) => setOrganization(e.target.value)}
-                        placeholder="e.g. SecOps Unit"
-                        className="w-full pl-10 pr-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white text-xs placeholder-slate-400 focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-950/40 transition-all disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
-                >
-                  <span>{loading ? 'Registering Account...' : 'Create Account'}</span>
-                  <Sparkles className="w-4 h-4 text-amber-300" />
-                </button>
-
-                <div className="text-center text-xs text-slate-400 pt-2 border-t border-slate-800/80">
-                  <span>Already have an account?</span>{' '}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode('SIGN_IN');
-                      setError(null);
-                    }}
-                    className="text-indigo-400 hover:text-indigo-300 font-semibold underline ml-1"
-                  >
-                    Sign In
-                  </button>
-                </div>
-              </form>
-            )
+            </form>
           )}
 
           {/* FORGOT PASSWORD FORM */}
@@ -438,8 +434,7 @@ export const LoginPage: React.FC = () => {
                 <CheckCircle2 className="w-8 h-8 text-emerald-400" />
                 <span className="font-bold text-sm text-white">Reset Link Dispatched</span>
                 <p className="text-slate-300 text-xs leading-relaxed">
-                  We've emailed a password recovery link to <span className="text-emerald-300 font-semibold">{email}</span>.
-                  Click the link in the email to set a new password.
+                  If an account exists for <span className="text-emerald-300 font-semibold">{email}</span>, a password reset link has been dispatched. Please check your inbox.
                 </p>
                 <button
                   type="button"
@@ -467,7 +462,7 @@ export const LoginPage: React.FC = () => {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="analyst@fraudshield.ai"
+                      placeholder="analyst@institution.com"
                       required
                       autoFocus
                       className="w-full pl-10 pr-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white text-xs placeholder-slate-400 focus:outline-none focus:border-indigo-500"
@@ -510,7 +505,7 @@ export const LoginPage: React.FC = () => {
           <span>•</span>
           <div className="flex items-center gap-1">
             <KeyRound className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Supabase Auth Cloud</span>
+            <span>Firebase Identity Platform</span>
           </div>
         </div>
       </div>

@@ -1,11 +1,13 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { firebaseAuthService, FirebaseUserRecord } from '../utils/firebase/client';
 
 export interface AuthUser {
-  id: string;
+  uid: string;
   email: string;
   name: string;
   role: string;
   organization: string;
+  emailVerified: boolean;
   avatarUrl?: string;
 }
 
@@ -20,53 +22,238 @@ interface SignUpParams {
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
-  signIn: (email: string, pass: string) => Promise<{ error?: string }>;
-  signUp: (params: SignUpParams) => Promise<{ error?: string; confirmationSent?: boolean }>;
+  signIn: (email: string, pass: string) => Promise<{ error?: string; unverified?: boolean }>;
+  signUp: (params: SignUpParams) => Promise<{ error?: string; verificationSent?: boolean }>;
+  sendVerificationEmail: () => Promise<{ error?: string }>;
+  refreshUser: () => Promise<boolean>;
   resetPassword: (email: string) => Promise<{ error?: string }>;
-  updatePassword: (newPassword: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
 }
 
-const DEFAULT_USER: AuthUser = {
-  id: 'analyst-primary',
-  email: 'lead.analyst@fraudshield.ai',
-  name: 'Lead Fraud Investigator',
-  role: 'Senior Fintech Risk Specialist',
-  organization: 'SecOps Threat Intelligence',
-};
+const TOKEN_KEY = 'fraudshield_fb_id_token';
+const REFRESH_KEY = 'fraudshield_fb_refresh_token';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<AuthUser | null>(DEFAULT_USER);
-  const [loading] = useState(false);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const signIn = async (_email: string, _pass: string): Promise<{ error?: string }> => {
-    setUser(DEFAULT_USER);
-    return {};
+  const formatUser = (record: FirebaseUserRecord): AuthUser => {
+    let profileMeta: { role?: string; organization?: string } = {};
+    try {
+      const raw = localStorage.getItem(`fraudshield_profile_${record.localId}`);
+      if (raw) profileMeta = JSON.parse(raw);
+    } catch {
+      // ignore
+    }
+
+    return {
+      uid: record.localId,
+      email: record.email,
+      name: record.displayName || record.email.split('@')[0] || 'Investigator',
+      role: profileMeta.role || 'Senior Fraud Investigator',
+      organization: profileMeta.organization || 'Fintech SecOps Unit',
+      emailVerified: Boolean(record.emailVerified),
+      avatarUrl: record.photoUrl,
+    };
   };
 
-  const signUp = async (params: SignUpParams): Promise<{ error?: string; confirmationSent?: boolean }> => {
-    setUser({
-      id: 'analyst-' + Date.now(),
-      email: params.email,
-      name: params.fullName || 'Lead Fraud Investigator',
-      role: params.role || 'Senior Fraud Analyst',
-      organization: params.organization || 'Fintech SecOps Unit',
-    });
-    return { confirmationSent: false };
+  useEffect(() => {
+    let mounted = true;
+
+    const restoreSession = async () => {
+      const token = localStorage.getItem(TOKEN_KEY);
+      const refreshToken = localStorage.getItem(REFRESH_KEY);
+
+      if (!token) {
+        if (mounted) setLoading(false);
+        return;
+      }
+
+      try {
+        let userData = await firebaseAuthService.getUserData(token);
+
+        // If token expired, try refreshing
+        if (!userData && refreshToken) {
+          const fresh = await firebaseAuthService.refreshSession(refreshToken);
+          if (fresh?.id_token) {
+            localStorage.setItem(TOKEN_KEY, fresh.id_token);
+            if (fresh.refresh_token) {
+              localStorage.setItem(REFRESH_KEY, fresh.refresh_token);
+            }
+            userData = await firebaseAuthService.getUserData(fresh.id_token);
+          }
+        }
+
+        if (mounted && userData) {
+          setUser(formatUser(userData));
+        } else if (mounted) {
+          localStorage.removeItem(TOKEN_KEY);
+          localStorage.removeItem(REFRESH_KEY);
+          setUser(null);
+        }
+      } catch {
+        if (mounted) setUser(null);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    restoreSession();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  /**
+   * Log in with Email & Password
+   */
+  const signIn = async (email: string, pass: string): Promise<{ error?: string; unverified?: boolean }> => {
+    try {
+      const session = await firebaseAuthService.signInWithPassword(email, pass);
+      localStorage.setItem(TOKEN_KEY, session.idToken);
+      localStorage.setItem(REFRESH_KEY, session.refreshToken);
+
+      // Verify emailVerified status from Firebase
+      const userData = await firebaseAuthService.getUserData(session.idToken);
+      if (userData) {
+        const authUser = formatUser(userData);
+        setUser(authUser);
+
+        if (!userData.emailVerified) {
+          return { unverified: true };
+        }
+      }
+      return {};
+    } catch (err: any) {
+      let msg = 'Authentication failed. Please verify credentials.';
+      const raw = err.message || '';
+      if (
+        raw.includes('INVALID_LOGIN_CREDENTIALS') ||
+        raw.includes('INVALID_PASSWORD') ||
+        raw.includes('EMAIL_NOT_FOUND')
+      ) {
+        msg = 'Invalid email address or password.';
+      } else if (raw.includes('TOO_MANY_ATTEMPTS_TRY_LATER')) {
+        msg = 'Access temporarily restricted due to repeated attempts. Please try again shortly or reset password.';
+      } else if (raw.includes('INVALID_EMAIL')) {
+        msg = 'Please enter a valid email address.';
+      }
+      return { error: msg };
+    }
   };
 
-  const resetPassword = async (_email: string): Promise<{ error?: string }> => {
-    return {};
+  /**
+   * Register new account and dispatch real Email Verification link via Firebase
+   */
+  const signUp = async (params: SignUpParams): Promise<{ error?: string; verificationSent?: boolean }> => {
+    try {
+      const session = await firebaseAuthService.signUp(params.email, params.password);
+      localStorage.setItem(TOKEN_KEY, session.idToken);
+      localStorage.setItem(REFRESH_KEY, session.refreshToken);
+
+      // Save user-specific profile metadata associated with Firebase UID
+      localStorage.setItem(
+        `fraudshield_profile_${session.localId}`,
+        JSON.stringify({
+          role: params.role?.trim() || 'Senior Fraud Investigator',
+          organization: params.organization?.trim() || 'Fintech SecOps Unit',
+        })
+      );
+
+      // Update Display Name in Firebase
+      if (params.fullName.trim()) {
+        try {
+          await firebaseAuthService.updateProfile(session.idToken, params.fullName);
+        } catch {
+          // ignore
+        }
+      }
+
+      // Dispatch Firebase Email Verification to the user's actual email address
+      await firebaseAuthService.sendEmailVerification(session.idToken);
+
+      // Fetch fresh user profile
+      const userData = await firebaseAuthService.getUserData(session.idToken);
+      if (userData) {
+        setUser(formatUser(userData));
+      }
+
+      return { verificationSent: true };
+    } catch (err: any) {
+      let msg = 'Registration failed.';
+      const raw = err.message || '';
+      if (raw.includes('EMAIL_EXISTS')) {
+        msg = 'An account with this email address is already registered.';
+      } else if (raw.includes('WEAK_PASSWORD')) {
+        msg = 'Password should be at least 6 characters.';
+      } else if (raw.includes('INVALID_EMAIL')) {
+        msg = 'Please provide a valid email format.';
+      }
+      return { error: msg };
+    }
   };
 
-  const updatePassword = async (_newPassword: string): Promise<{ error?: string }> => {
-    return {};
+  /**
+   * Dispatch verification email to current session
+   */
+  const sendVerificationEmail = async (): Promise<{ error?: string }> => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) return { error: 'No active session found.' };
+
+    try {
+      await firebaseAuthService.sendEmailVerification(token);
+      return {};
+    } catch (err: any) {
+      const raw = err.message || '';
+      if (raw.includes('TOO_MANY_ATTEMPTS')) {
+        return { error: 'Requests throttled. Please wait 60 seconds before requesting another email.' };
+      }
+      return { error: err.message || 'Failed to dispatch verification email.' };
+    }
   };
 
+  /**
+   * Reload Firebase user to check if email was verified in inbox
+   */
+  const refreshUser = async (): Promise<boolean> => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) return false;
+
+    try {
+      const userData = await firebaseAuthService.getUserData(token);
+      if (userData) {
+        setUser(formatUser(userData));
+        return Boolean(userData.emailVerified);
+      }
+    } catch {
+      // ignore
+    }
+    return false;
+  };
+
+  /**
+   * Dispatch Password Reset Email
+   */
+  const resetPassword = async (email: string): Promise<{ error?: string }> => {
+    try {
+      await firebaseAuthService.sendPasswordResetEmail(email);
+      return {};
+    } catch {
+      // Keep message secure without revealing account presence
+      return {};
+    }
+  };
+
+  /**
+   * Sign Out
+   */
   const signOut = async () => {
-    setUser(DEFAULT_USER);
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_KEY);
+    setUser(null);
   };
 
   return (
@@ -76,8 +263,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading,
         signIn,
         signUp,
+        sendVerificationEmail,
+        refreshUser,
         resetPassword,
-        updatePassword,
         signOut,
       }}
     >
