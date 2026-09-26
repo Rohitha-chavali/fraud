@@ -1,163 +1,210 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase/client';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 export interface AuthUser {
   id: string;
-  email: string;
+  phone?: string;
+  email?: string;
   name?: string;
+  role?: string;
+  organization?: string;
   avatarUrl?: string;
-  provider?: string;
 }
 
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
-  signInWithGoogle: () => Promise<void>;
-  signInWithEmail: (email: string, pass: string) => Promise<{ error?: string }>;
-  signUpWithEmail: (email: string, pass: string) => Promise<{ error?: string }>;
-  signInDemoAnalyst: () => void;
+  needsProfileSetup: boolean;
+  sendPhoneOtp: (phone: string) => Promise<{ error?: string }>;
+  verifyPhoneOtp: (phone: string, token: string) => Promise<{ error?: string; needsProfile?: boolean }>;
+  updateProfile: (profile: { name: string; role?: string; organization?: string }) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const DEMO_USER_KEY = 'fraudshield_demo_user';
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [needsProfileSetup, setNeedsProfileSetup] = useState(false);
+
+  const mapSupabaseUser = (sbUser: SupabaseUser | null): AuthUser | null => {
+    if (!sbUser) return null;
+    const metadata = sbUser.user_metadata || {};
+    const name = metadata.full_name || metadata.name || '';
+    return {
+      id: sbUser.id,
+      phone: sbUser.phone || '',
+      email: sbUser.email || '',
+      name: name,
+      role: metadata.role || 'Fraud Investigator',
+      organization: metadata.organization || 'SecOps Unit',
+      avatarUrl: metadata.avatar_url,
+    };
+  };
 
   useEffect(() => {
-    // 1. Check local demo user session fallback
-    const savedDemo = localStorage.getItem(DEMO_USER_KEY);
-    if (savedDemo) {
-      try {
-        setUser(JSON.parse(savedDemo));
+    let mounted = true;
+
+    // Safety timeout: ensure loading state never hangs longer than 2.5s even if network stalls
+    const timeoutTimer = setTimeout(() => {
+      if (mounted && loading) {
         setLoading(false);
-      } catch {
-        localStorage.removeItem(DEMO_USER_KEY);
       }
-    }
+    }, 2500);
 
-    // 2. Check Supabase session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser({
-          id: session.user.id,
-          email: session.user.email || 'analyst@fraudshield.ai',
-          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0],
-          avatarUrl: session.user.user_metadata?.avatar_url,
-          provider: session.user.app_metadata?.provider || 'supabase',
-        });
-        localStorage.removeItem(DEMO_USER_KEY);
-      }
-      setLoading(false);
-    }).catch(() => {
-      setLoading(false);
-    });
+    // Initial session lookup
+    supabase.auth
+      .getSession()
+      .then(({ data: { session }, error }) => {
+        if (!mounted) return;
+        if (error) {
+          console.warn('[Auth] Session check notice:', error.message);
+        }
+        if (session?.user) {
+          const authUser = mapSupabaseUser(session.user);
+          setUser(authUser);
+          // Check if name / profile details are missing
+          const hasName = Boolean(authUser?.name && authUser.name.trim().length > 0);
+          setNeedsProfileSetup(!hasName);
+        } else {
+          setUser(null);
+          setNeedsProfileSetup(false);
+        }
+      })
+      .catch((err) => {
+        console.warn('[Auth] Session fetch warning:', err);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
 
-    // 3. Listen to Supabase Auth State changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Listen to real-time auth changes (sign in, sign out, token refresh)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
       if (session?.user) {
-        setUser({
-          id: session.user.id,
-          email: session.user.email || 'analyst@fraudshield.ai',
-          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0],
-          avatarUrl: session.user.user_metadata?.avatar_url,
-          provider: session.user.app_metadata?.provider || 'supabase',
-        });
-        localStorage.removeItem(DEMO_USER_KEY);
-      } else if (!localStorage.getItem(DEMO_USER_KEY)) {
+        const authUser = mapSupabaseUser(session.user);
+        setUser(authUser);
+        const hasName = Boolean(authUser?.name && authUser.name.trim().length > 0);
+        setNeedsProfileSetup(!hasName);
+      } else {
         setUser(null);
+        setNeedsProfileSetup(false);
       }
       setLoading(false);
     });
 
     return () => {
+      mounted = false;
+      clearTimeout(timeoutTimer);
       subscription.unsubscribe();
     };
   }, []);
 
-  const signInWithGoogle = async () => {
+  /**
+   * Step 1: Request OTP code via Supabase Phone Authentication
+   */
+  const sendPhoneOtp = async (phone: string): Promise<{ error?: string }> => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
+      const cleanPhone = phone.trim();
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: cleanPhone,
         options: {
-          redirectTo: window.location.origin + '/dashboard',
+          channel: 'sms',
         },
       });
-      if (error) throw error;
-    } catch (err: any) {
-      console.error('Google Sign In error:', err);
-      throw err;
-    }
-  };
 
-  const signInWithEmail = async (email: string, pass: string) => {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password: pass,
-      });
       if (error) {
         return { error: error.message };
       }
-      if (data.user) {
-        setUser({
-          id: data.user.id,
-          email: data.user.email || email,
-          name: data.user.email?.split('@')[0],
-          provider: 'email',
-        });
-      }
       return {};
     } catch (err: any) {
-      return { error: err.message || 'Authentication failed' };
+      return { error: err.message || 'Failed to dispatch verification code.' };
     }
   };
 
-  const signUpWithEmail = async (email: string, pass: string) => {
+  /**
+   * Step 2: Verify SMS OTP code with Supabase
+   */
+  const verifyPhoneOtp = async (
+    phone: string,
+    token: string
+  ): Promise<{ error?: string; needsProfile?: boolean }> => {
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password: pass,
+      const cleanPhone = phone.trim();
+      const cleanToken = token.trim();
+
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone: cleanPhone,
+        token: cleanToken,
+        type: 'sms',
       });
+
       if (error) {
         return { error: error.message };
       }
-      if (data.user) {
-        setUser({
-          id: data.user.id,
-          email: data.user.email || email,
-          name: data.user.email?.split('@')[0],
-          provider: 'email',
-        });
+
+      if (data?.user) {
+        const authUser = mapSupabaseUser(data.user);
+        setUser(authUser);
+        const hasName = Boolean(authUser?.name && authUser.name.trim().length > 0);
+        setNeedsProfileSetup(!hasName);
+        return { needsProfile: !hasName };
       }
+
       return {};
     } catch (err: any) {
-      return { error: err.message || 'Sign up failed' };
+      return { error: err.message || 'Verification failed. Please check code.' };
     }
   };
 
-  const signInDemoAnalyst = () => {
-    const demoUser: AuthUser = {
-      id: 'demo-analyst-001',
-      email: 'lead.analyst@fraudshield.ai',
-      name: 'Lead Fraud Investigator',
-      provider: 'demo',
-    };
-    setUser(demoUser);
-    localStorage.setItem(DEMO_USER_KEY, JSON.stringify(demoUser));
+  /**
+   * Step 3: Profile Setup (Name, Role, Organization) for verified user
+   */
+  const updateProfile = async (profile: {
+    name: string;
+    role?: string;
+    organization?: string;
+  }): Promise<{ error?: string }> => {
+    try {
+      const { data, error } = await supabase.auth.updateUser({
+        data: {
+          full_name: profile.name.trim(),
+          role: profile.role?.trim() || 'Fraud Investigator',
+          organization: profile.organization?.trim() || 'SecOps Unit',
+        },
+      });
+
+      if (error) {
+        return { error: error.message };
+      }
+
+      if (data?.user) {
+        const authUser = mapSupabaseUser(data.user);
+        setUser(authUser);
+        setNeedsProfileSetup(false);
+      }
+
+      return {};
+    } catch (err: any) {
+      return { error: err.message || 'Failed to update profile.' };
+    }
   };
 
+  /**
+   * Terminate active Supabase session
+   */
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
     } catch (err) {
-      console.error('Sign out error:', err);
+      console.warn('[Auth] Sign out notice:', err);
     }
-    localStorage.removeItem(DEMO_USER_KEY);
     setUser(null);
+    setNeedsProfileSetup(false);
   };
 
   return (
@@ -165,10 +212,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         user,
         loading,
-        signInWithGoogle,
-        signInWithEmail,
-        signUpWithEmail,
-        signInDemoAnalyst,
+        needsProfileSetup,
+        sendPhoneOtp,
+        verifyPhoneOtp,
+        updateProfile,
         signOut,
       }}
     >

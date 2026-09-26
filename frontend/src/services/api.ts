@@ -9,6 +9,14 @@ import {
 
 const API_BASE = (import.meta.env?.VITE_API_BASE_URL || '/api').replace(/\/$/, '');
 
+function getUrl(path: string): URL {
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  if (API_BASE.startsWith('http://') || API_BASE.startsWith('https://')) {
+    return new URL(`${API_BASE}${cleanPath}`);
+  }
+  return new URL(`${API_BASE}${cleanPath}`, window.location.origin);
+}
+
 export async function fetchDashboard(): Promise<{
   metrics: DashboardMetrics;
   riskDistribution: { low: number; moderate: number; high: number; critical: number };
@@ -26,7 +34,7 @@ export async function fetchTransactions(params?: {
   limit?: number;
   skip?: number;
 }): Promise<{ total: number; transactions: Transaction[] }> {
-  const url = new URL(`${API_BASE}/transactions`, window.location.origin);
+  const url = getUrl('/transactions');
   if (params?.riskLevel) url.searchParams.set('riskLevel', params.riskLevel);
   if (params?.status) url.searchParams.set('status', params.status);
   if (params?.search) url.searchParams.set('search', params.search);
@@ -61,7 +69,7 @@ export async function analyzeTransaction(payload: Partial<Transaction>): Promise
 }
 
 export async function fetchAlerts(severity?: string, status?: string): Promise<{ alerts: FraudAlert[]; total: number }> {
-  const url = new URL(`${API_BASE}/alerts`, window.location.origin);
+  const url = getUrl('/alerts');
   if (severity && severity !== 'ALL') url.searchParams.set('severity', severity);
   if (status && status !== 'ALL') url.searchParams.set('status', status);
 
@@ -85,7 +93,7 @@ export async function fetchInvestigations(status?: string): Promise<{
   counts: { new: number; investigating: number; actionRequired: number; resolved: number };
   total: number;
 }> {
-  const url = new URL(`${API_BASE}/investigations`, window.location.origin);
+  const url = getUrl('/investigations');
   if (status && status.toLowerCase() !== 'all') url.searchParams.set('status', status);
 
   const res = await fetch(url.toString());

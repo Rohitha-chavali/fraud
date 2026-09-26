@@ -1,65 +1,162 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Logo } from '../components/common/Logo';
-import { ShieldCheck, Lock, Sparkles, ArrowRight, AlertCircle, KeyRound, CheckCircle2 } from 'lucide-react';
+import {
+  ShieldCheck,
+  Lock,
+  ArrowRight,
+  AlertCircle,
+  KeyRound,
+  Phone,
+  User,
+  Building,
+  RotateCcw,
+  CheckCircle2,
+  Sparkles,
+} from 'lucide-react';
+
+type AuthStep = 'PHONE' | 'OTP' | 'PROFILE';
 
 export const LoginPage: React.FC = () => {
-  const { signInWithGoogle, signInWithEmail, signUpWithEmail, signInDemoAnalyst } = useAuth();
+  const { user, loading: authLoading, needsProfileSetup, sendPhoneOtp, verifyPhoneOtp, updateProfile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   const from = (location.state as any)?.from?.pathname || '/dashboard';
 
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  // Wizard state
+  const [step, setStep] = useState<AuthStep>('PHONE');
+  const [phone, setPhone] = useState('+91 ');
+  const [otp, setOtp] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [role, setRole] = useState('Senior Fraud Investigator');
+  const [organization, setOrganization] = useState('Fintech Security Operations');
+
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
-  const handleGoogleSignIn = async () => {
-    try {
-      setGoogleLoading(true);
-      setError(null);
-      await signInWithGoogle();
-      // Browser redirects to Google OAuth
-    } catch (err: any) {
-      setError(err.message || 'Google authentication failed. Please try credentials or Demo Access.');
-      setGoogleLoading(false);
+  // If already logged in with complete profile, go directly to dashboard
+  useEffect(() => {
+    if (!authLoading && user) {
+      if (needsProfileSetup) {
+        setStep('PROFILE');
+      } else {
+        navigate(from, { replace: true });
+      }
     }
-  };
+  }, [user, authLoading, needsProfileSetup, from, navigate]);
 
-  const handleEmailAuth = async (e: React.FormEvent) => {
+  // Resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
+
+  /**
+   * STEP 1: Dispatch OTP via Supabase
+   */
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) return;
+    const cleanPhone = phone.trim();
+
+    if (!cleanPhone || cleanPhone.length < 8) {
+      setError('Please enter a valid mobile number including country code (e.g. +91 9876543210).');
+      return;
+    }
 
     setLoading(true);
     setError(null);
 
-    const res = isSignUp
-      ? await signUpWithEmail(email, password)
-      : await signInWithEmail(email, password);
+    const res = await sendPhoneOtp(cleanPhone);
+    setLoading(false);
 
     if (res.error) {
       setError(res.error);
-      setLoading(false);
+    } else {
+      setStep('OTP');
+      setResendCooldown(45);
+    }
+  };
+
+  /**
+   * STEP 2: Verify OTP via Supabase
+   */
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanOtp = otp.trim();
+
+    if (!cleanOtp || cleanOtp.length < 6) {
+      setError('Please enter the 6-digit verification code.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    const res = await verifyPhoneOtp(phone.trim(), cleanOtp);
+    setLoading(false);
+
+    if (res.error) {
+      setError(res.error);
+    } else {
+      if (res.needsProfile) {
+        setStep('PROFILE');
+      } else {
+        navigate(from, { replace: true });
+      }
+    }
+  };
+
+  /**
+   * STEP 3: Save Name and Profile Details
+   */
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!fullName.trim()) {
+      setError('Please enter your full legal or investigator name.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    const res = await updateProfile({
+      name: fullName.trim(),
+      role: role.trim(),
+      organization: organization.trim(),
+    });
+    setLoading(false);
+
+    if (res.error) {
+      setError(res.error);
     } else {
       navigate(from, { replace: true });
     }
   };
 
-  const handleDemoAccess = () => {
-    signInDemoAnalyst();
-    navigate(from, { replace: true });
+  const handleResend = async () => {
+    if (resendCooldown > 0 || loading) return;
+    setLoading(true);
+    setError(null);
+    const res = await sendPhoneOtp(phone.trim());
+    setLoading(false);
+    if (res.error) {
+      setError(res.error);
+    } else {
+      setResendCooldown(45);
+    }
   };
 
   return (
     <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col justify-center items-center p-4 relative overflow-hidden">
-      {/* Background glowing gradients */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-indigo-900/20 via-purple-900/10 to-transparent blur-3xl pointer-events-none" />
+      {/* Background ambient lighting */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-gradient-to-b from-indigo-900/25 via-purple-900/10 to-transparent blur-3xl pointer-events-none" />
 
-      {/* Main Container */}
       <div className="w-full max-w-md relative z-10 space-y-6">
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center space-y-2">
@@ -69,138 +166,234 @@ export const LoginPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Auth Card */}
+        {/* Auth Wizard Card */}
         <div className="p-6 sm:p-8 rounded-2xl bg-[#0b101f]/95 border border-slate-800 shadow-2xl backdrop-blur-xl space-y-6">
+          {/* Header pill & title */}
           <div className="text-center space-y-1">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/25 text-indigo-300 text-[11px] font-semibold">
               <Lock className="w-3 h-3 text-indigo-400" />
-              <span>Restricted Access · Authorized Personnel Only</span>
+              <span>Restricted Fintech Access · Phone OTP Protocol</span>
             </div>
+
             <h2 className="text-lg font-bold text-white tracking-tight pt-2">
-              {isSignUp ? 'Create Investigator Account' : 'Sign in to Fraud Shield AI'}
+              {step === 'PHONE' && 'Secure Phone Authentication'}
+              {step === 'OTP' && 'Verify 6-Digit Code'}
+              {step === 'PROFILE' && 'Investigator Profile Setup'}
             </h2>
+
             <p className="text-xs text-slate-400">
-              {isSignUp
-                ? 'Register to access real-time fraud monitoring telemetry.'
-                : 'Authentication required to access the risk intelligence console.'}
+              {step === 'PHONE' && 'Enter your verified phone number to receive an instant authentication passcode.'}
+              {step === 'OTP' && `Passcode dispatched to ${phone}. Enter below to complete authorization.`}
+              {step === 'PROFILE' && 'Configure your analyst credential identity for audit trail records.'}
             </p>
           </div>
 
+          {/* Error notice */}
           {error && (
             <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-500/40 text-rose-200 text-xs flex items-start gap-2">
               <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-              <span>{error}</span>
+              <div className="flex-1 space-y-1">
+                <span>{error}</span>
+                {error.toLowerCase().includes('provider') && (
+                  <p className="text-[11px] text-rose-300/80">
+                    Tip: Ensure Phone Auth provider and SMS gateway are enabled in your Supabase Dashboard.
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
-          {/* Primary Action: Google Authentication */}
-          <button
-            onClick={handleGoogleSignIn}
-            disabled={googleLoading || loading}
-            className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700/80 active:bg-slate-800 text-white font-semibold text-xs border border-slate-700 hover:border-slate-500 shadow-lg shadow-black/40 transition-all hover:scale-[1.01]"
-          >
-            {/* Google SVG G Icon */}
-            <svg className="w-4 h-4" viewBox="0 0 24 24">
-              <path
-                fill="#4285F4"
-                d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.87c2.27-2.09 3.67-5.17 3.67-9.15z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.87-3.05c-1.08.72-2.45 1.16-4.06 1.16-3.13 0-5.78-2.11-6.73-4.96H1.25v3.15C3.26 21.36 7.34 24 12 24z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.27 14.24c-.25-.72-.38-1.49-.38-2.24s.13-1.52.38-2.24V6.61H1.25C.45 8.22 0 10.05 0 12s.45 3.78 1.25 5.39l4.02-3.15z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.61l4.02 3.15c.95-2.85 3.6-4.96 6.73-4.96z"
-              />
-            </svg>
-            <span>{googleLoading ? 'Redirecting to Google...' : 'Continue with Google'}</span>
-          </button>
+          {/* STEP 1: PHONE NUMBER FORM */}
+          {step === 'PHONE' && (
+            <form onSubmit={handleSendOtp} className="space-y-4">
+              <div>
+                <label className="text-slate-300 text-xs font-medium block mb-1.5 flex items-center justify-between">
+                  <span>Mobile Phone Number</span>
+                  <span className="text-[10px] text-slate-400 font-mono">E.164 format</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <Phone className="w-4 h-4 text-indigo-400" />
+                  </div>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+91 98765 43210"
+                    required
+                    className="w-full pl-10 pr-3.5 py-3 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white font-mono text-sm placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1.5">
+                  Include country code (e.g. <span className="text-indigo-300">+91</span> for India, <span className="text-indigo-300">+1</span> for USA).
+                </p>
+              </div>
 
-          {/* Divider */}
-          <div className="relative flex items-center justify-center">
-            <div className="border-t border-slate-800 w-full" />
-            <span className="bg-[#0b101f] px-3 text-[10px] text-slate-400 uppercase tracking-widest font-mono shrink-0">
-              or credentials
-            </span>
-            <div className="border-t border-slate-800 w-full" />
-          </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-950/40 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <span>{loading ? 'Dispatching OTP...' : 'Send Security OTP'}</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </form>
+          )}
 
-          {/* Email / Password Form */}
-          <form onSubmit={handleEmailAuth} className="space-y-3.5 text-xs">
-            <div>
-              <label className="text-slate-400 font-medium block mb-1">Work Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="analyst@institution.com"
-                required
-                className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500"
-              />
-            </div>
+          {/* STEP 2: OTP VERIFICATION FORM */}
+          {step === 'OTP' && (
+            <form onSubmit={handleVerifyOtp} className="space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-slate-300 text-xs font-medium">Enter 6-Digit OTP</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStep('PHONE');
+                      setError(null);
+                    }}
+                    className="text-[11px] text-indigo-400 hover:text-indigo-300 underline"
+                  >
+                    Change Phone
+                  </button>
+                </div>
 
-            <div>
-              <label className="text-slate-400 font-medium block mb-1">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••••••"
-                required
-                className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500"
-              />
-            </div>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <KeyRound className="w-4 h-4 text-indigo-400" />
+                  </div>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                    placeholder="123456"
+                    autoFocus
+                    required
+                    className="w-full pl-10 pr-3.5 py-3 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white font-mono text-lg tracking-widest text-center placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors"
+                  />
+                </div>
+              </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-900/30 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
-            >
-              <span>{loading ? 'Authenticating...' : isSignUp ? 'Create Account' : 'Sign In'}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </form>
+              <button
+                type="submit"
+                disabled={loading || otp.length < 6}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-emerald-950/40 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <span>{loading ? 'Verifying with Supabase...' : 'Verify & Authenticate'}</span>
+                <CheckCircle2 className="w-4 h-4" />
+              </button>
 
-          {/* Switch Sign in / Sign up */}
-          <div className="text-center text-xs text-slate-400">
-            <span>{isSignUp ? 'Already registered?' : "Don't have an account?"}</span>{' '}
-            <button
-              type="button"
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-indigo-400 hover:text-indigo-300 font-semibold underline ml-1"
-            >
-              {isSignUp ? 'Sign In' : 'Create Account'}
-            </button>
-          </div>
+              <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
+                <span>Didn't receive code?</span>
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={resendCooldown > 0 || loading}
+                  className="text-indigo-400 hover:text-indigo-300 font-semibold disabled:text-slate-400 flex items-center gap-1"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>{resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend Code'}</span>
+                </button>
+              </div>
+            </form>
+          )}
 
-          {/* Demo Fallback Quick Button */}
-          <div className="pt-2 border-t border-slate-800">
-            <button
-              type="button"
-              onClick={handleDemoAccess}
-              className="w-full py-2.5 px-3 rounded-xl bg-indigo-950/40 hover:bg-indigo-950/70 border border-indigo-500/30 text-indigo-300 hover:text-indigo-200 text-xs font-semibold flex items-center justify-center gap-2 transition-all"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-              <span>One-Click Analyst Demo Access</span>
-            </button>
+          {/* STEP 3: PROFILE SETUP FORM */}
+          {step === 'PROFILE' && (
+            <form onSubmit={handleSaveProfile} className="space-y-4">
+              <div>
+                <label className="text-slate-300 text-xs font-medium block mb-1">
+                  Full Legal / Investigator Name <span className="text-rose-400">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <User className="w-4 h-4 text-indigo-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="e.g. Rohitha Chavali"
+                    required
+                    autoFocus
+                    className="w-full pl-10 pr-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white text-xs placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-slate-300 text-xs font-medium block mb-1">
+                  Designation / Role
+                </label>
+                <input
+                  type="text"
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  placeholder="e.g. Lead Fraud Analyst"
+                  className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white text-xs placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 text-xs font-medium block mb-1">
+                  Organization / Financial Institution
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <Building className="w-4 h-4 text-indigo-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={organization}
+                    onChange={(e) => setOrganization(e.target.value)}
+                    placeholder="e.g. Fintech Fraud Intelligence Unit"
+                    className="w-full pl-10 pr-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white text-xs placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || !fullName.trim()}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-950/40 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <span>{loading ? 'Saving Profile...' : 'Complete Setup & Enter Platform'}</span>
+                <Sparkles className="w-4 h-4 text-amber-300" />
+              </button>
+            </form>
+          )}
+
+          {/* Step indicator breadcrumbs */}
+          <div className="flex items-center justify-center gap-2 pt-2 border-t border-slate-800/80">
+            <span
+              className={`h-1.5 rounded-full transition-all ${
+                step === 'PHONE' ? 'w-8 bg-indigo-500' : 'w-2 bg-slate-700'
+              }`}
+            />
+            <span
+              className={`h-1.5 rounded-full transition-all ${
+                step === 'OTP' ? 'w-8 bg-indigo-500' : 'w-2 bg-slate-700'
+              }`}
+            />
+            <span
+              className={`h-1.5 rounded-full transition-all ${
+                step === 'PROFILE' ? 'w-8 bg-indigo-500' : 'w-2 bg-slate-700'
+              }`}
+            />
           </div>
         </div>
 
-        {/* Security Footer */}
+        {/* Security badges */}
         <div className="flex items-center justify-center gap-4 text-[11px] text-slate-400">
           <div className="flex items-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>256-bit TLS</span>
+            <span>Encrypted Session</span>
           </div>
           <span>•</span>
           <div className="flex items-center gap-1">
             <KeyRound className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Supabase Cloud Guard</span>
+            <span>Supabase Auth Cloud</span>
           </div>
         </div>
       </div>

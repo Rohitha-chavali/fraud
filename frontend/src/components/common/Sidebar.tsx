@@ -129,14 +129,14 @@ export const Sidebar: React.FC = () => {
           <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
             <div className="flex items-center gap-2 overflow-hidden">
               <div className="w-7 h-7 rounded-lg bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-xs font-bold text-indigo-300 shrink-0">
-                {user.email.charAt(0).toUpperCase()}
+                {(user.name || user.phone || user.email || 'A').charAt(0).toUpperCase()}
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-xs font-semibold text-slate-200 truncate">
-                  {user.name || user.email.split('@')[0]}
+                  {user.name || user.phone || 'Analyst'}
                 </span>
                 <span className="text-[10px] text-slate-400 truncate font-mono">
-                  {user.email}
+                  {user.phone || user.email || user.role || 'SecOps'}
                 </span>
               </div>
             </div>

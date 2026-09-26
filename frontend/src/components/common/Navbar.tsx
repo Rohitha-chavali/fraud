@@ -85,11 +85,11 @@ export const Navbar: React.FC<NavbarProps> = ({ title, subtitle }) => {
         {/* User profile & Sign Out */}
         {user && (
           <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
-            <div className="flex items-center gap-1.5 text-xs text-slate-300 max-w-[120px] truncate" title={user.email}>
+            <div className="flex items-center gap-1.5 text-xs text-slate-300 max-w-[140px] truncate" title={user.name || user.phone || user.email}>
               <div className="w-6 h-6 rounded-full bg-indigo-600/40 border border-indigo-500/50 flex items-center justify-center text-[10px] font-bold text-indigo-300 shrink-0">
-                {user.email.charAt(0).toUpperCase()}
+                {(user.name || user.phone || user.email || 'A').charAt(0).toUpperCase()}
               </div>
-              <span className="truncate hidden lg:inline">{user.name || user.email.split('@')[0]}</span>
+              <span className="truncate hidden lg:inline">{user.name || user.phone || user.email}</span>
             </div>
 
             <button
