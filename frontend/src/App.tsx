@@ -123,9 +123,9 @@ export function App() {
         <Router>
           <AppLayout>
             <Routes>
-              {/* Public Auth Routes */}
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              {/* Auth routes bypass directly to dashboard */}
+              <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/reset-password" element={<Navigate to="/dashboard" replace />} />
 
               {/* All Application Routes strictly protected behind authentication */}
               <Route

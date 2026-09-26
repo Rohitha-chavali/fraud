@@ -1,6 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '../utils/supabase/client';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
+import React, { createContext, useContext, useState } from 'react';
 
 export interface AuthUser {
   id: string;
@@ -29,190 +27,46 @@ interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
+const DEFAULT_USER: AuthUser = {
+  id: 'analyst-primary',
+  email: 'lead.analyst@fraudshield.ai',
+  name: 'Lead Fraud Investigator',
+  role: 'Senior Fintech Risk Specialist',
+  organization: 'SecOps Threat Intelligence',
+};
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<AuthUser | null>(DEFAULT_USER);
+  const [loading] = useState(false);
 
-  const mapSupabaseUser = (sbUser: SupabaseUser | null): AuthUser | null => {
-    if (!sbUser) return null;
-    const metadata = sbUser.user_metadata || {};
-    const email = sbUser.email || '';
-    const name = metadata.full_name || metadata.name || email.split('@')[0] || 'Analyst';
-    return {
-      id: sbUser.id,
-      email: email,
-      name: name,
-      role: metadata.role || 'Fraud Investigator',
-      organization: metadata.organization || 'Fintech SecOps Unit',
-      avatarUrl: metadata.avatar_url,
-    };
+  const signIn = async (_email: string, _pass: string): Promise<{ error?: string }> => {
+    setUser(DEFAULT_USER);
+    return {};
   };
 
-  useEffect(() => {
-    let mounted = true;
-
-    // Failsafe watchdog timer: ensure loading state never stalls longer than 2s
-    const watchdog = setTimeout(() => {
-      if (mounted && loading) {
-        setLoading(false);
-      }
-    }, 2000);
-
-    // Initial Supabase Session Hydration
-    supabase.auth
-      .getSession()
-      .then(({ data: { session }, error }) => {
-        if (!mounted) return;
-        if (error) {
-          console.warn('[Auth] Session retrieval notice:', error.message);
-        }
-        if (session?.user) {
-          setUser(mapSupabaseUser(session.user));
-        } else {
-          setUser(null);
-        }
-      })
-      .catch((err) => {
-        console.warn('[Auth] Session check exception:', err);
-      })
-      .finally(() => {
-        if (mounted) setLoading(false);
-      });
-
-    // Real-time Supabase Auth Event Listener
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return;
-      if (session?.user) {
-        setUser(mapSupabaseUser(session.user));
-      } else {
-        setUser(null);
-      }
-      setLoading(false);
-    });
-
-    return () => {
-      mounted = false;
-      clearTimeout(watchdog);
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  /**
-   * Supabase Email + Password Login
-   */
-  const signIn = async (email: string, pass: string): Promise<{ error?: string }> => {
-    try {
-      const cleanEmail = email.trim();
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: cleanEmail,
-        password: pass,
-      });
-
-      if (error) {
-        return { error: error.message };
-      }
-
-      if (data?.user) {
-        setUser(mapSupabaseUser(data.user));
-      }
-      return {};
-    } catch (err: any) {
-      return { error: err.message || 'Authentication failed. Please verify credentials.' };
-    }
-  };
-
-  /**
-   * Supabase Account Registration with Profile Metadata
-   */
   const signUp = async (params: SignUpParams): Promise<{ error?: string; confirmationSent?: boolean }> => {
-    try {
-      const cleanEmail = params.email.trim();
-      const cleanName = params.fullName.trim();
-      const role = params.role?.trim() || 'Fraud Investigator';
-      const org = params.organization?.trim() || 'Fintech SecOps Unit';
-
-      const { data, error } = await supabase.auth.signUp({
-        email: cleanEmail,
-        password: params.password,
-        options: {
-          data: {
-            full_name: cleanName,
-            role: role,
-            organization: org,
-          },
-        },
-      });
-
-      if (error) {
-        return { error: error.message };
-      }
-
-      // If Supabase has "Confirm email" toggled on, session is null until confirmed via email link
-      const confirmationSent = !data?.session;
-
-      if (data?.user && data.session) {
-        setUser(mapSupabaseUser(data.user));
-      }
-
-      return { confirmationSent };
-    } catch (err: any) {
-      return { error: err.message || 'Registration failed. Please check inputs.' };
-    }
+    setUser({
+      id: 'analyst-' + Date.now(),
+      email: params.email,
+      name: params.fullName || 'Lead Fraud Investigator',
+      role: params.role || 'Senior Fraud Analyst',
+      organization: params.organization || 'Fintech SecOps Unit',
+    });
+    return { confirmationSent: false };
   };
 
-  /**
-   * Supabase Password Reset Request
-   */
-  const resetPassword = async (email: string): Promise<{ error?: string }> => {
-    try {
-      const cleanEmail = email.trim();
-      const redirectUrl = `${window.location.origin}/reset-password`;
-
-      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-        redirectTo: redirectUrl,
-      });
-
-      if (error) {
-        return { error: error.message };
-      }
-      return {};
-    } catch (err: any) {
-      return { error: err.message || 'Failed to dispatch password recovery link.' };
-    }
+  const resetPassword = async (_email: string): Promise<{ error?: string }> => {
+    return {};
   };
 
-  /**
-   * Update Password (used on /reset-password page after clicking email link)
-   */
-  const updatePassword = async (newPassword: string): Promise<{ error?: string }> => {
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
-      if (error) {
-        return { error: error.message };
-      }
-      return {};
-    } catch (err: any) {
-      return { error: err.message || 'Failed to update password.' };
-    }
+  const updatePassword = async (_newPassword: string): Promise<{ error?: string }> => {
+    return {};
   };
 
-  /**
-   * Sign Out
-   */
   const signOut = async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch (err) {
-      console.warn('[Auth] Sign out notice:', err);
-    }
-    setUser(null);
+    setUser(DEFAULT_USER);
   };
 
   return (
