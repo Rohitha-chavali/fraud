@@ -44,11 +44,7 @@ export const LoginPage: React.FC = () => {
   // Auto-route if user is already authenticated
   useEffect(() => {
     if (!authLoading && user) {
-      if (user.emailVerified) {
-        navigate(from, { replace: true });
-      } else {
-        navigate('/verify-email', { replace: true });
-      }
+      navigate(from, { replace: true });
     }
   }, [user, authLoading, from, navigate]);
 
@@ -83,8 +79,6 @@ export const LoginPage: React.FC = () => {
 
     if (res.error) {
       setError(res.error);
-    } else if (res.unverified) {
-      navigate('/verify-email', { replace: true });
     } else {
       navigate(from, { replace: true });
     }
@@ -130,9 +124,8 @@ export const LoginPage: React.FC = () => {
 
     if (res.error) {
       setError(res.error);
-    } else if (res.verificationSent) {
-      // Direct immediately to email verification requirement screen
-      navigate('/verify-email', { replace: true });
+    } else {
+      navigate(from, { replace: true });
     }
   };
 

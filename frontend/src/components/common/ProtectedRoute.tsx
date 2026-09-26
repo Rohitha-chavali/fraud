@@ -26,11 +26,6 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Signed in, but email NOT verified -> redirect to /verify-email
-  if (!user.emailVerified) {
-    return <Navigate to="/verify-email" replace />;
-  }
-
-  // Authenticated + Email Verified
+  // Authenticated -> allow immediate access
   return <>{children}</>;
 };

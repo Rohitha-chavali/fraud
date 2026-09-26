@@ -23,11 +23,10 @@ export const VerifyEmailPage: React.FC = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // If already verified or no user, redirect
   useEffect(() => {
     if (!user) {
       navigate('/login', { replace: true });
-    } else if (user.emailVerified) {
+    } else {
       navigate('/dashboard', { replace: true });
     }
   }, [user, navigate]);

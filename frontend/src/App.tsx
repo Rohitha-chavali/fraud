@@ -125,7 +125,7 @@ export function App() {
             <Routes>
               {/* Public Auth Routes */}
               <Route path="/login" element={<LoginPage />} />
-              <Route path="/verify-email" element={<VerifyEmailPage />} />
+              <Route path="/verify-email" element={<Navigate to="/dashboard" replace />} />
 
               {/* Public Landing or Protected Routes */}
               <Route

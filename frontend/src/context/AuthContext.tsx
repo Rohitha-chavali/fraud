@@ -108,7 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   /**
-   * Log in with Email & Password
+   * Log in with Email & Password directly
    */
   const signIn = async (email: string, pass: string): Promise<{ error?: string; unverified?: boolean }> => {
     try {
@@ -116,15 +116,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem(TOKEN_KEY, session.idToken);
       localStorage.setItem(REFRESH_KEY, session.refreshToken);
 
-      // Verify emailVerified status from Firebase
+      // Set user session directly into dashboard
       const userData = await firebaseAuthService.getUserData(session.idToken);
       if (userData) {
-        const authUser = formatUser(userData);
-        setUser(authUser);
-
-        if (!userData.emailVerified) {
-          return { unverified: true };
-        }
+        setUser(formatUser(userData));
       }
       return {};
     } catch (err: any) {
@@ -146,7 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   /**
-   * Register new account and dispatch real Email Verification link via Firebase
+   * Register new account and log in directly
    */
   const signUp = async (params: SignUpParams): Promise<{ error?: string; verificationSent?: boolean }> => {
     try {
@@ -172,16 +167,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // Dispatch Firebase Email Verification to the user's actual email address
-      await firebaseAuthService.sendEmailVerification(session.idToken);
-
-      // Fetch fresh user profile
+      // Fetch fresh user profile and log in directly
       const userData = await firebaseAuthService.getUserData(session.idToken);
       if (userData) {
         setUser(formatUser(userData));
       }
 
-      return { verificationSent: true };
+      return {};
     } catch (err: any) {
       let msg = 'Registration failed.';
       const raw = err.message || '';
