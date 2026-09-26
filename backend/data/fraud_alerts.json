@@ -1,0 +1,351 @@
+[
+  {
+    "alertId": "ALT-7858",
+    "transactionId": "TXN-90827",
+    "riskScore": 99,
+    "severity": "CRITICAL",
+    "reason": "Extreme Amount Anomaly",
+    "signals": [
+      "Extreme Amount Anomaly",
+      "Unrecognized Geographic Location",
+      "Unrecognized Device Fingerprint",
+      "Multiple Failed Verification Attempts",
+      "Cross-Border International Route"
+    ],
+    "status": "NEW",
+    "amount": 85000.0,
+    "currency": "INR",
+    "location": "London",
+    "merchant": "TechWorld Electronics",
+    "createdAt": "2026-09-26T06:38:44.265788"
+  },
+  {
+    "alertId": "ALT-7034",
+    "transactionId": "TXN-15803",
+    "riskScore": 99,
+    "severity": "CRITICAL",
+    "reason": "Extreme Amount Anomaly",
+    "signals": [
+      "Extreme Amount Anomaly",
+      "Impossible Travel Pattern Detected",
+      "Unrecognized Device Fingerprint",
+      "Multiple Failed Verification Attempts",
+      "Cross-Border International Route"
+    ],
+    "status": "NEW",
+    "amount": 84500.0,
+    "currency": "INR",
+    "location": "London",
+    "merchant": "Apple Store Regent Street",
+    "createdAt": "2026-09-26T06:22:07.660650"
+  },
+  {
+    "alertId": "ALT-9012",
+    "transactionId": "TXN-92831",
+    "riskScore": 99,
+    "severity": "CRITICAL",
+    "reason": "Impossible travel (Mumbai \u2192 London) & 3 failed credentials with 24\u00d7 amount surge",
+    "signals": [
+      "Extreme Amount Anomaly",
+      "Impossible Travel Pattern Detected",
+      "Unrecognized Device Fingerprint",
+      "Multiple Failed Verification Attempts",
+      "Rapid Transaction Velocity",
+      "Cross-Border International Route"
+    ],
+    "status": "NEW",
+    "amount": 84500.0,
+    "currency": "INR",
+    "location": "London",
+    "merchant": "Apple Store Regent Street",
+    "createdAt": "2026-09-26T05:45:04.667196"
+  },
+  {
+    "alertId": "ALT-1176",
+    "transactionId": "TXN-38426",
+    "riskScore": 99,
+    "severity": "CRITICAL",
+    "reason": "Extreme Amount Anomaly",
+    "signals": [
+      "Extreme Amount Anomaly",
+      "Unrecognized Geographic Location",
+      "Unrecognized Device Fingerprint",
+      "Multiple Failed Verification Attempts",
+      "Cross-Border International Route"
+    ],
+    "status": "NEW",
+    "amount": 10357.54,
+    "currency": "INR",
+    "location": "New York",
+    "merchant": "Zomato Delivery",
+    "createdAt": "2026-09-26T05:52:04.667657"
+  },
+  {
+    "alertId": "ALT-8179",
+    "transactionId": "TXN-48460",
+    "riskScore": 99,
+    "severity": "CRITICAL",
+    "reason": "Extreme Amount Anomaly",
+    "signals": [
+      "Extreme Amount Anomaly",
+      "Unrecognized Geographic Location",
+      "Unrecognized Device Fingerprint",
+      "Multiple Failed Verification Attempts",
+      "Cross-Border International Route"
+    ],
+    "status": "NEW",
+    "amount": 58582.33,
+    "currency": "INR",
+    "location": "Singapore",
+    "merchant": "Flipkart Internet",
+    "createdAt": "2026-09-26T05:01:04.667657"
+  },
+  {
+    "alertId": "ALT-2495",
+    "transactionId": "TXN-90183",
+    "riskScore": 99,
+    "severity": "CRITICAL",
+    "reason": "Extreme Amount Anomaly",
+    "signals": [
+      "Extreme Amount Anomaly",
+      "Unrecognized Geographic Location",
+      "Unrecognized Device Fingerprint",
+      "Multiple Failed Verification Attempts",
+      "High-Risk Merchant Sector",
+      "Cross-Border International Route"
+    ],
+    "status": "NEW",
+    "amount": 22040.84,
+    "currency": "INR",
+    "location": "Dubai",
+    "merchant": "Malabar Gold & Diamonds",
+    "createdAt": "2026-09-26T02:06:04.667657"
+  },
+  {
+    "alertId": "ALT-9573",
+    "transactionId": "TXN-40643",
+    "riskScore": 83,
+    "severity": "CRITICAL",
+    "reason": "Substantial Amount Surge",
+    "signals": [
+      "Substantial Amount Surge",
+      "Unrecognized Geographic Location",
+      "Unrecognized Device Fingerprint",
+      "Prior Authentication Failure",
+      "High-Risk Merchant Sector"
+    ],
+    "status": "NEW",
+    "amount": 11334.54,
+    "currency": "INR",
+    "location": "Kolkata",
+    "merchant": "CryptoVault Exchange",
+    "createdAt": "2026-09-26T03:45:04.667657"
+  },
+  {
+    "alertId": "ALT-6250",
+    "transactionId": "TXN-79500",
+    "riskScore": 99,
+    "severity": "CRITICAL",
+    "reason": "Extreme Amount Anomaly",
+    "signals": [
+      "Extreme Amount Anomaly",
+      "Impossible Travel Pattern Detected",
+      "Unrecognized Device Fingerprint",
+      "Multiple Failed Verification Attempts",
+      "Rapid Transaction Velocity",
+      "High-Risk Merchant Sector",
+      "Cross-Border International Route"
+    ],
+    "status": "NEW",
+    "amount": 67029.81,
+    "currency": "INR",
+    "location": "London",
+    "merchant": "CryptoVault Exchange",
+    "createdAt": "2026-09-26T02:27:04.667657"
+  },
+  {
+    "alertId": "ALT-3086",
+    "transactionId": "TXN-29720",
+    "riskScore": 99,
+    "severity": "CRITICAL",
+    "reason": "Extreme Amount Anomaly",
+    "signals": [
+      "Extreme Amount Anomaly",
+      "Unrecognized Geographic Location",
+      "Unrecognized Device Fingerprint",
+      "Prior Authentication Failure",
+      "High-Risk Merchant Sector",
+      "Cross-Border International Route"
+    ],
+    "status": "RESOLVED",
+    "amount": 81741.19,
+    "currency": "INR",
+    "location": "Dubai",
+    "merchant": "Malabar Gold & Diamonds",
+    "createdAt": "2026-09-25T22:21:04.667657"
+  },
+  {
+    "alertId": "ALT-9699",
+    "transactionId": "TXN-49638",
+    "riskScore": 99,
+    "severity": "CRITICAL",
+    "reason": "Extreme Amount Anomaly",
+    "signals": [
+      "Extreme Amount Anomaly",
+      "Unrecognized Geographic Location",
+      "Unrecognized Device Fingerprint",
+      "Multiple Failed Verification Attempts",
+      "Cross-Border International Route"
+    ],
+    "status": "NEW",
+    "amount": 19343.02,
+    "currency": "INR",
+    "location": "New York",
+    "merchant": "Shell Highway Fuel Station",
+    "createdAt": "2026-09-25T20:30:04.667657"
+  },
+  {
+    "alertId": "ALT-1904",
+    "transactionId": "TXN-21122",
+    "riskScore": 60,
+    "severity": "HIGH",
+    "reason": "Above-Average Transaction Size",
+    "signals": [
+      "Above-Average Transaction Size",
+      "Unrecognized Geographic Location",
+      "Unrecognized Device Fingerprint",
+      "Prior Authentication Failure",
+      "Rapid Transaction Velocity"
+    ],
+    "status": "NEW",
+    "amount": 13083.88,
+    "currency": "INR",
+    "location": "Bangkok",
+    "merchant": "Zomato Delivery",
+    "createdAt": "2026-09-26T01:00:04.667657"
+  },
+  {
+    "alertId": "ALT-4435",
+    "transactionId": "TXN-47896",
+    "riskScore": 80,
+    "severity": "CRITICAL",
+    "reason": "Substantial Amount Surge",
+    "signals": [
+      "Substantial Amount Surge",
+      "Unrecognized Geographic Location",
+      "Unrecognized Device Fingerprint",
+      "Prior Authentication Failure",
+      "Rapid Transaction Velocity"
+    ],
+    "status": "INVESTIGATING",
+    "amount": 7377.69,
+    "currency": "INR",
+    "location": "Kolkata",
+    "merchant": "Taj Palace Luxury Hotel",
+    "createdAt": "2026-09-25T22:09:04.667657"
+  },
+  {
+    "alertId": "ALT-1756",
+    "transactionId": "TXN-12396",
+    "riskScore": 99,
+    "severity": "CRITICAL",
+    "reason": "Extreme Amount Anomaly",
+    "signals": [
+      "Extreme Amount Anomaly",
+      "Unrecognized Geographic Location",
+      "Unrecognized Device Fingerprint",
+      "Prior Authentication Failure",
+      "High-Risk Merchant Sector",
+      "Cross-Border International Route"
+    ],
+    "status": "INVESTIGATING",
+    "amount": 30757.39,
+    "currency": "INR",
+    "location": "London",
+    "merchant": "Monte Carlo Luxury Gaming",
+    "createdAt": "2026-09-25T14:14:04.667657"
+  },
+  {
+    "alertId": "ALT-9765",
+    "transactionId": "TXN-42151",
+    "riskScore": 75,
+    "severity": "HIGH",
+    "reason": "Substantial Amount Surge",
+    "signals": [
+      "Substantial Amount Surge",
+      "Unrecognized Geographic Location",
+      "Unrecognized Device Fingerprint",
+      "Prior Authentication Failure"
+    ],
+    "status": "NEW",
+    "amount": 26508.19,
+    "currency": "INR",
+    "location": "Singapore",
+    "merchant": "Dubai Duty Free Terminal 3",
+    "createdAt": "2026-09-25T12:27:04.667657"
+  },
+  {
+    "alertId": "ALT-5817",
+    "transactionId": "TXN-72824",
+    "riskScore": 99,
+    "severity": "CRITICAL",
+    "reason": "Substantial Amount Surge",
+    "signals": [
+      "Substantial Amount Surge",
+      "Unrecognized Geographic Location",
+      "Unrecognized Device Fingerprint",
+      "Prior Authentication Failure",
+      "Rapid Transaction Velocity",
+      "High-Risk Merchant Sector",
+      "Cross-Border International Route"
+    ],
+    "status": "NEW",
+    "amount": 9678.87,
+    "currency": "INR",
+    "location": "Singapore",
+    "merchant": "Monte Carlo Luxury Gaming",
+    "createdAt": "2026-09-25T17:29:04.667657"
+  },
+  {
+    "alertId": "ALT-1995",
+    "transactionId": "TXN-16745",
+    "riskScore": 99,
+    "severity": "CRITICAL",
+    "reason": "Extreme Amount Anomaly",
+    "signals": [
+      "Extreme Amount Anomaly",
+      "Unrecognized Geographic Location",
+      "Unrecognized Device Fingerprint",
+      "Multiple Failed Verification Attempts",
+      "Rapid Transaction Velocity",
+      "Cross-Border International Route"
+    ],
+    "status": "RESOLVED",
+    "amount": 20159.96,
+    "currency": "INR",
+    "location": "Dubai",
+    "merchant": "Steam Digital Games",
+    "createdAt": "2026-09-25T22:57:04.667657"
+  },
+  {
+    "alertId": "ALT-1107",
+    "transactionId": "TXN-21774",
+    "riskScore": 99,
+    "severity": "CRITICAL",
+    "reason": "Extreme Amount Anomaly",
+    "signals": [
+      "Extreme Amount Anomaly",
+      "Impossible Travel Pattern Detected",
+      "Unrecognized Device Fingerprint",
+      "Prior Authentication Failure",
+      "Rapid Transaction Velocity",
+      "Cross-Border International Route"
+    ],
+    "status": "NEW",
+    "amount": 46438.02,
+    "currency": "INR",
+    "location": "Singapore",
+    "merchant": "Croma Megastore",
+    "createdAt": "2026-09-25T10:19:04.667657"
+  }
+]
